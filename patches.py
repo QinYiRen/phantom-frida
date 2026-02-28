@@ -425,19 +425,11 @@ def get_rpc_patches() -> list[dict]:
         {
             "description": "Add getRpcStr() method for obfuscated RPC identifier",
             "file": "subprojects/frida-core/lib/base/rpc.vala",
-            "old": '''namespace Frida {
-	public class RpcClient : Object {
-		public RpcPeer peer {
-			get;
-			construct;
+            "old": '''		construct;
 		}
 
-		private Gee.HashMap<string, PendingResponse> pending_responses = new Gee.HashMap<string, PendingResponse> ();''',
-            "new": '''namespace Frida {
-	public class RpcClient : Object {
-		public RpcPeer peer {
-			get;
-			construct;
+		private Gee.HashMap<string, PendingResponse> pending_responses''',
+            "new": '''		construct;
 		}
 
 		public string getRpcStr(bool quote){
@@ -449,31 +441,25 @@ def get_rpc_patches() -> list[dict]:
 			}
 		}
 
-		private Gee.HashMap<string, PendingResponse> pending_responses = new Gee.HashMap<string, PendingResponse> ();''',
+		private Gee.HashMap<string, PendingResponse> pending_responses''',
         },
         {
             "description": "Replace hardcoded 'frida:rpc' in request builder",
             "file": "subprojects/frida-core/lib/base/rpc.vala",
-            "old": '''.begin_array ()
-				.add_string_value ("frida:rpc")''',
-            "new": '''.begin_array ()
-				.add_string_value (getRpcStr(false))''',
+            "old": '''.add_string_value ("frida:rpc")''',
+            "new": '''.add_string_value (getRpcStr(false))''',
         },
         {
             "description": "Replace hardcoded '\"frida:rpc\"' in message handler",
             "file": "subprojects/frida-core/lib/base/rpc.vala",
-            "old": '''if (json.index_of ("\"frida:rpc\"") == -1)
-			return false;''',
-            "new": '''if (json.index_of (getRpcStr (true)) == -1)
-			return false;''',
+            "old": '''json.index_of ("\"frida:rpc\"")''',
+            "new": '''json.index_of (getRpcStr (true))''',
         },
         {
             "description": "Replace hardcoded 'frida:rpc' in type check",
             "file": "subprojects/frida-core/lib/base/rpc.vala",
-            "old": '''if (type == null || type != "frida:rpc")
-			return false;''',
-            "new": '''if (type == null || type != getRpcStr (false))
-			return false;''',
+            "old": '''type != "frida:rpc")''',
+            "new": '''type != getRpcStr (false))''',
         },
     ]
 
