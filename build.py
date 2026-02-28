@@ -39,6 +39,7 @@ from patches import (
     get_internal_patches,
     get_temp_path_patches,
     get_stability_patches_17,
+    get_rpc_patches,
     MEMFD_PATCHES,
     LIBC_HOOK_PATCHES,
     SELINUX_PATCHES,
@@ -490,6 +491,16 @@ def apply_targeted_patches(frida_dir: Path, custom_name: str, frida_major: int):
                 log(f"  {target_name}: {applied} patches", "OK")
         else:
             log(f"  {target_name}: file not found", "WARN")
+
+    # --- RPC protocol identifier obfuscation ---
+    for patch in get_rpc_patches():
+        fpath = frida_dir / patch["file"]
+        if fpath.exists():
+            count = replace_in_file(fpath, patch["old"], patch["new"])
+            if count:
+                log(f"  RPC: {patch['description']} ({count})", "OK")
+        else:
+            log(f"  RPC: file not found - {patch['file']}", "WARN")
 
     log("Targeted patches complete", "OK")
 

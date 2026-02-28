@@ -408,6 +408,77 @@ def get_internal_patches(name: str, cap_name: str) -> list[tuple[str, str]]:
 
 
 # ============================================================================
+# [E] EXTENDED: RPC MESSAGE HIDE — hide "frida:rpc" string from protocol messages
+# ============================================================================
+
+def get_rpc_patches() -> list[dict]:
+    """
+    Hide "frida:rpc" protocol identifier using Base64 obfuscation.
+
+    The "frida:rpc" string appears in JSON messages between client and agent,
+    and can be detected via network sniffing or IPC inspection.
+
+    Patch adds a getRpcStr() method that returns the string at runtime via
+    double Base64 decoding, replacing all hardcoded occurrences.
+    """
+    return [
+        {
+            "description": "Add getRpcStr() method for obfuscated RPC identifier",
+            "file": "subprojects/frida-core/lib/base/rpc.vala",
+            "old": '''namespace Frida {
+	public class RpcClient : Object {
+		public RpcPeer peer {
+			get;
+			construct;
+		}
+
+		private Gee.HashMap<string, PendingResponse> pending_responses = new Gee.HashMap<string, PendingResponse> ();''',
+            "new": '''namespace Frida {
+	public class RpcClient : Object {
+		public RpcPeer peer {
+			get;
+			construct;
+		}
+
+		public string getRpcStr(bool quote){
+			string result = (string) GLib.Base64.decode((string) GLib.Base64.decode("Wm5KcFpHRTZjbkJq"));
+			if(quote){
+				return "\"" + result + "\"";
+			}else{
+				return result;
+			}
+		}
+
+		private Gee.HashMap<string, PendingResponse> pending_responses = new Gee.HashMap<string, PendingResponse> ();''',
+        },
+        {
+            "description": "Replace hardcoded 'frida:rpc' in request builder",
+            "file": "subprojects/frida-core/lib/base/rpc.vala",
+            "old": '''.begin_array ()
+				.add_string_value ("frida:rpc")''',
+            "new": '''.begin_array ()
+				.add_string_value (getRpcStr(false))''',
+        },
+        {
+            "description": "Replace hardcoded '\"frida:rpc\"' in message handler",
+            "file": "subprojects/frida-core/lib/base/rpc.vala",
+            "old": '''if (json.index_of ("\"frida:rpc\"") == -1)
+			return false;''',
+            "new": '''if (json.index_of (getRpcStr (true)) == -1)
+			return false;''',
+        },
+        {
+            "description": "Replace hardcoded 'frida:rpc' in type check",
+            "file": "subprojects/frida-core/lib/base/rpc.vala",
+            "old": '''if (type == null || type != "frida:rpc")
+			return false;''',
+            "new": '''if (type == null || type != getRpcStr (false))
+			return false;''',
+        },
+    ]
+
+
+# ============================================================================
 # [E] EXTENDED: STABILITY / CRASH FIXES
 # ============================================================================
 
@@ -457,4 +528,8 @@ Detection vectors addressed:
 14. Binary string residuals: Post-compilation sweep for frida/Frida/FRIDA
 15. Build config defines:    FRIDA_HELPER_PATH, FRIDA_AGENT_PATH -- renamed
 16. Asset directory:         libdir/frida -- libdir/custom
+
+[N] New (always applied):
+17. RPC protocol:            "frida:rpc" string -- obfuscated via Base64
 """
+
